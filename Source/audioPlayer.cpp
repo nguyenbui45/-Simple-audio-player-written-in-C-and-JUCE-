@@ -22,7 +22,7 @@ class Application: public juce:: JUCEApplication{
             
             public:
                 MainWindow(const juce::String& name, juce:: Component* c,JUCEApplication& a): DocumentWindow(name,
-                                                                                                            juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(ResizableWindow::backgroundColourId),
+                                                                                                            juce::Colours::transparentBlack,
                                                                                                             juce::DocumentWindow::allButtons), app(a)
                                                                                                {
                                                                                         
@@ -35,7 +35,7 @@ class Application: public juce:: JUCEApplication{
                     #else
                     setResizable(true,false);
                     setResizeLimits(500,450,10000,10000);
-                    centreWithSize(500, 450);
+                    centreWithSize(getWidth(), getHeight());
                     #endif
             
                     setVisible(true);

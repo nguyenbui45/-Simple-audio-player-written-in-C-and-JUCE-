@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="q0biLg" name="audio_player" projectType="guiapp" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              userNotes="cd ~/Code_Directory/Signal_Processing/JUCE/projects/audioPlayer/Builds/LinuxMakefile &amp;&amp; make  &amp;&amp; cd build &amp;&amp; ./audio_player">
   <MAINGROUP id="xjEmHs" name="audio_player">
     <GROUP id="{C63BB754-9999-B9FB-F1F3-1E2A938C682B}" name="Source">
       <FILE id="BjD6JD" name="audioPlayer.cpp" compile="1" resource="0" file="Source/audioPlayer.cpp"/>

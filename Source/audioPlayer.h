@@ -10,8 +10,9 @@
 
 #pragma once
 #include <JuceHeader.h>
+#include <iostream>
 
-class MainContentComponent: public juce::ChangeListener, public juce::AudioAppComponent
+class MainContentComponent: public juce::ChangeListener, public juce::AudioAppComponent, private juce::Timer
 { 
     private:
             // enumerize states by numbers
@@ -19,6 +20,8 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
                 Stopped,
                 Starting,
                 Playing,
+                Pausing,
+                Paused,
                 Stopping
         };
     
@@ -26,6 +29,14 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
         juce::TextButton openButton_;
         juce::TextButton playButton_;
         juce::TextButton stopButton_;
+        juce::Label currentPositionLabel_;
+        
+        //length of audio file
+        int lengthInSecond_;
+        
+        // Declare thumbnail
+        juce::AudioThumbnail thumbnail_;
+        juce::AudioThumbnailCache thumbnailCache_;
         
         std::unique_ptr<juce::FileChooser> chooser; // pointer control the file
     
@@ -34,6 +45,25 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
         juce::AudioTransportSource transportSource; // variable to listen to the state's change
         TransportState state_; // enum of state
         
+        void timerCallback() override{
+            if(transportSource.isPlaying()) {
+                juce::RelativeTime position(transportSource.getCurrentPosition());
+                auto minutes = ((int) position.inMinutes()) % 60;
+                auto seconds = ((int) position.inSeconds()) % 60;
+                auto millis = ((int) position.inMilliseconds()) % 1000;
+                auto full_minutes = ((int) lengthInSecond_ / 60);
+                auto full_seconds = ((int) lengthInSecond_ - (full_minutes * 60));
+                auto full_millis = ((int) 0);
+                auto positionString = juce::String::formatted("%02d:%02d:%03d/%02d:%02d:%03d",minutes,seconds,millis,full_minutes,full_seconds,full_millis);
+                
+                currentPositionLabel_.setText(positionString,juce::dontSendNotification);
+            }
+            else {
+                currentPositionLabel_.setText("Stopped",juce::dontSendNotification);
+            }
+            
+            repaint();
+        }
         
         
         void changeState_(TransportState newState) {
@@ -50,18 +80,27 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
                 switch(state_){
                     case Stopped:
                         stopButton_.setEnabled(false);
-                        playButton_.setEnabled(true);
+                        stopButton_.setButtonText("Stop");
+                        playButton_.setButtonText("Start");
                         transportSource.setPosition(0.0);
                         break;
                     case Starting:
-                        playButton_.setEnabled(false);
                         transportSource.start();
                         break;
                     case Playing:
                         stopButton_.setEnabled(true);
+                        stopButton_.setButtonText("Stop");
+                        playButton_.setButtonText("Pause");
                         break;
                     case Stopping:
                         transportSource.stop();
+                        break;
+                    case Pausing:
+                        transportSource.stop();
+                        break;
+                    case Paused:
+                        playButton_.setButtonText("Resume");
+                        stopButton_.setButtonText("Stop");
                         break;
                 }
             }
@@ -97,21 +136,31 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
                         //
                         transportSource.setSource(newSource.get(),0,nullptr,reader->sampleRate);
                         playButton_.setEnabled(true);
+                        thumbnail_.setSource (new juce::FileInputSource (file));
                         // Since AudioTransportSource now be our newlly allocated AudioFormatReaderSource object.
                         // we can save the AudioFormatReaderSource object in our readerSource member.
                         // To do this, we must transfer the ownership from newSource by std::make_unique.release()
                         readerSource.reset(newSource.release());
+                        lengthInSecond_ = reader->lengthInSamples / reader->sampleRate;
+                        
                     }
                 }
             });
         }
         
         void playButtonClicked_(){
-            changeState_(Starting);
+            if ((state_ == Stopped) || (state_ ==Paused))   
+                changeState_(Starting);
+            else if(state_ == Playing)
+                changeState_(Pausing);
+                
         }
         
         void stopButtonClicked_(){
-            changeState_(Stopping);
+            if(state_ == Paused)
+                changeState_(Stopped);
+            else
+                changeState_(Stopping);
         }
                 
             
@@ -121,12 +170,12 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
         
     
     public:
-        MainContentComponent(): state_(Stopped)
-        {
+        MainContentComponent(): state_(Stopped),thumbnailCache_(5),thumbnail_(512,formatManager,thumbnailCache_){
             // initialization of buttons
             juce::Component::addAndMakeVisible(&openButton_);
-            openButton_.setButtonText("Open...");
+            openButton_.setButtonText("Choose song");
             openButton_.onClick = [this]{openButtonClicked_();};
+            openButton_.setColour(juce::TextButton::buttonColourId, juce::Colours::grey); // color decoration of button
         
             juce::Component::addAndMakeVisible(&playButton_);
             playButton_.setButtonText("Play"); // text display on button
@@ -140,11 +189,20 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
             stopButton_.setColour(juce::TextButton::buttonColourId,juce::Colours::red);
             stopButton_.setEnabled(false);
             
+            juce::Component::addAndMakeVisible(&currentPositionLabel_);
+            currentPositionLabel_.setText("Stopped",juce::dontSendNotification);
+            
+            
+            
             formatManager.registerBasicFormats();// register a basic format method()
             transportSource.addChangeListener(this); // add a listener so that we can respond to changes in its state
             
             setAudioChannels (0, 2);
-            juce::Component::setSize(500,450);
+            
+            //thumbnail
+            thumbnail_.addChangeListener(this);
+            startTimer (20);
+            
         }
         
         ~MainContentComponent() override{
@@ -152,9 +210,10 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
         }
         
         void resized() override{
-            openButton_.setBounds(75,100,70,70);
-            playButton_.setBounds(75,200,70,70);
-            stopButton_.setBounds(75,300,70,70);
+            openButton_.setBounds(10,getHeight()-100,70,70);
+            playButton_.setBounds(90,getHeight()-100,70,70);
+            stopButton_.setBounds(170,getHeight()-100,70,70);
+            currentPositionLabel_.setBounds(260,getHeight()-70,100,30);
         }
         
         
@@ -213,11 +272,66 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
         * When chnages in the transportSource are reported, the changeListenerCallback() will be called.
         */
             if(source == &transportSource){
-                if(transportSource.isPlaying())
+                if(transportSource.isPlaying()){
                     changeState_(Playing);
-                else
+                }
+                else if((state_ == Stopping) || (state_ == Playing))
                     changeState_(Stopped);
+                else if(state_ == Pausing)
+                    changeState_(Paused);
             }
-        }             
+            
+            if(source == &thumbnail_)
+                    thumbnailChanged();
+        }
+        
+        
+        void thumbnailChanged(){
+            repaint();
+        }
+          
+        
+        
+        /*
+        
+        
+                                            DRAWING THE THUMBNAIL
+        
+        */
+        
+        void paint(juce::Graphics& g) override{
+            juce::Rectangle<int> thumbnailBounds(10,10,getWidth()  -20,getHeight()-200);
+            
+            if(thumbnail_.getNumChannels() == 0)
+                paintIfNoFileLoaded(g,thumbnailBounds);
+            else
+                paintIfFileLoaded(g,thumbnailBounds);
+        }
+        
+        void paintIfNoFileLoaded (juce::Graphics& g, const juce::Rectangle<int>& thumbnailBounds) {
+            g.setColour (juce::Colours::grey);
+            g.fillRect (thumbnailBounds);
+            g.setColour (juce::Colours::white);
+            g.drawFittedText ("No File Loaded", thumbnailBounds, juce::Justification::centred, 1);
+        }
+        
+        void paintIfFileLoaded (juce::Graphics& g, const juce::Rectangle<int>& thumbnailBounds){
+            g.setColour (juce::Colours::black);
+            g.fillRect (thumbnailBounds);
+ 
+            g.setColour (juce::Colours::wheat);
+ 
+            auto audioLength = (float) thumbnail_.getTotalLength();                               // [12]
+            thumbnail_.drawChannels (g, thumbnailBounds, 0.0, audioLength, 1.0f);
+ 
+            g.setColour (juce::Colours::green);
+ 
+            auto audioPosition = (float) transportSource.getCurrentPosition();
+            auto drawPosition = (audioPosition / audioLength) * (float) thumbnailBounds.getWidth()
+                            + (float) thumbnailBounds.getX();                                // [13]
+            g.drawLine (drawPosition, (float) thumbnailBounds.getY(), drawPosition,
+                    (float) thumbnailBounds.getBottom(), 2.0f);                              // [14]
+        }
+            
     
 };
