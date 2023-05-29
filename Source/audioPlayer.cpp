@@ -34,7 +34,7 @@ class Application: public juce:: JUCEApplication{
                     setFullScreen(true);
                     #else
                     setResizable(true,false);
-                    setResizeLimits(500,450,10000,10000);
+                    setResizeLimits(1200,900,10000,10000);
                     centreWithSize(getWidth(), getHeight());
                     #endif
             

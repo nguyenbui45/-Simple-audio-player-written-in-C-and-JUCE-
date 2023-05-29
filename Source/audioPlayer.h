@@ -191,6 +191,7 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
             
             juce::Component::addAndMakeVisible(&currentPositionLabel_);
             currentPositionLabel_.setText("Stopped",juce::dontSendNotification);
+			currentPositionLabel_.setFont(juce::Font(20.0f));
             
             
             
@@ -213,7 +214,7 @@ class MainContentComponent: public juce::ChangeListener, public juce::AudioAppCo
             openButton_.setBounds(10,getHeight()-100,70,70);
             playButton_.setBounds(90,getHeight()-100,70,70);
             stopButton_.setBounds(170,getHeight()-100,70,70);
-            currentPositionLabel_.setBounds(260,getHeight()-70,100,30);
+            currentPositionLabel_.setBounds(260,getHeight()-70,170,30);
         }
         
         
