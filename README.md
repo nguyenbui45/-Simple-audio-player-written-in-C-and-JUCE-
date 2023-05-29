@@ -20,7 +20,8 @@
 - [ ] Select more song feature
 
 
-![](https://github.com/nguyenbui45/Simple-audio-player-written-in-Cpp-and-JUCE/blob/master/media/pic2.png)
+![](https://github.com/nguyenbui45/Simple-audio-player-written-in-Cpp-and-JUCE/blob/master/media/pic2.png)\
+
 _Main GUI of the program (yeah, I know it's terrible :>)_
 
 
